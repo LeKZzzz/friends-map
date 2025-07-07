@@ -1,0 +1,68 @@
+[
+  {
+    "id": "1",
+    "name": "张三",
+    "province": "北京",
+    "city": "北京市",
+    "address": "朝阳区",
+    "latitude": 39.9042,
+    "longitude": 116.4074,
+    "avatar": "https://www.gravatar.com/avatar/1?s=50&d=monsterid&r=pg",
+    "description": "北京的朋友"
+  },
+  {
+    "id": "2",
+    "name": "李四",
+    "province": "上海",
+    "city": "上海市",
+    "address": "浦东新区",
+    "latitude": 31.2304,
+    "longitude": 121.4737,
+    "avatar": "https://www.gravatar.com/avatar/2?s=50&d=monsterid&r=pg",
+    "description": "上海的朋友"
+  },
+  {
+    "id": "3",
+    "name": "王五",
+    "province": "广东",
+    "city": "深圳市",
+    "address": "南山区",
+    "latitude": 22.5431,
+    "longitude": 114.0579,
+    "avatar": "https://www.gravatar.com/avatar/3?s=50&d=monsterid&r=pg",
+    "description": "深圳的朋友"
+  },
+  {
+    "id": "4",
+    "name": "赵六",
+    "province": "四川",
+    "city": "成都市",
+    "address": "锦江区",
+    "latitude": 30.5728,
+    "longitude": 104.0668,
+    "avatar": "https://www.gravatar.com/avatar/4?s=50&d=monsterid&r=pg",
+    "description": "成都的朋友"
+  },
+  {
+    "id": "5",
+    "name": "John",
+    "province": "USA",
+    "city": "New York",
+    "address": "Manhattan",
+    "latitude": 40.7128,
+    "longitude": -74.0060,
+    "avatar": "https://www.gravatar.com/avatar/5?s=50&d=monsterid&r=pg",
+    "description": "纽约的朋友"
+  },
+  {
+    "id": "6",
+    "name": "Emily",
+    "province": "UK",
+    "city": "London",
+    "address": "Westminster",
+    "latitude": 51.5074,
+    "longitude": -0.1278,
+    "avatar": "https://www.gravatar.com/avatar/6?s=50&d=monsterid&r=pg",
+    "description": "伦敦的朋友"
+  }
+]
