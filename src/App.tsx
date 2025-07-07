@@ -1,13 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import WorldMap from './components/WorldMap';
 import ChinaMap from './components/ChinaMap';
-import { Friend } from './types';
+import { Friend, MapRef } from './types';
 import friendsData from './data/friends.json';
 import './App.css';
 
 const App: React.FC = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeMap, setActiveMap] = useState<'world' | 'china'>('world');
+  const worldMapRef = useRef<MapRef>(null);
+  const chinaMapRef = useRef<MapRef>(null);
+
+  useEffect(() => {
+    setFriends(friendsData);
+  }, []);
+
+  const handleFriendClick = (friend: Friend) => {
+    const currentMapRef = activeMap === 'world' ? worldMapRef : chinaMapRef;
+    if (currentMapRef.current) {
+      currentMapRef.current.flyTo(friend.latitude, friend.longitude, 12);
+    }
+  };
 
   useEffect(() => {
     setFriends(friendsData);
@@ -38,7 +51,11 @@ const App: React.FC = () => {
           <h3>朋友列表 ({friends.length})</h3>
           <div className="friends-list">
             {friends.map((friend) => (
-              <div key={friend.id} className="friend-item">
+              <div 
+                key={friend.id} 
+                className="friend-item"
+                onClick={() => handleFriendClick(friend)}
+              >
                 <img 
                   src={friend.avatar || `https://www.gravatar.com/avatar/${friend.id}?s=40&d=monsterid&r=pg`} 
                   alt={friend.name}
@@ -49,6 +66,9 @@ const App: React.FC = () => {
                   <p>{friend.province} {friend.city}</p>
                   {friend.address && <small>{friend.address}</small>}
                 </div>
+                <div className="friend-item-action">
+                  🎯
+                </div>
               </div>
             ))}
           </div>
@@ -56,9 +76,9 @@ const App: React.FC = () => {
         
         <main className="map-area">
           {activeMap === 'world' ? (
-            <WorldMap friends={friends} />
+            <WorldMap ref={worldMapRef} friends={friends} />
           ) : (
-            <ChinaMap friends={friends} />
+            <ChinaMap ref={chinaMapRef} friends={friends} />
           )}
         </main>
       </div>

@@ -170,11 +170,29 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .friend-item:hover {
   background-color: #e9ecef;
   transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.friend-item:active {
+  transform: translateX(1px);
+  background-color: #dee2e6;
+}
+
+.friend-item-action {
+  margin-left: auto;
+  font-size: 1.2rem;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.friend-item:hover .friend-item-action {
+  opacity: 1;
 }
 
 .friend-item-avatar {

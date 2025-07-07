@@ -21,3 +21,7 @@ export interface MapViewport {
   center: [number, number];
   zoom: number;
 }
+
+export interface MapRef {
+  flyTo: (lat: number, lng: number, zoom?: number) => void;
+}

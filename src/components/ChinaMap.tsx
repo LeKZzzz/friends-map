@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
+import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
-import { Friend } from '../types';
+import { Friend, MapRef } from '../types';
 import { getChinaFriends, DEFAULT_CHINA_VIEWPORT } from '../utils/mapUtils';
 import FriendInfo from './FriendInfo';
 import 'leaflet/dist/leaflet.css';
@@ -18,9 +18,20 @@ interface ChinaMapProps {
   friends: Friend[];
 }
 
-const ChinaMap: React.FC<ChinaMapProps> = ({ friends }) => {
+const ChinaMap = forwardRef<MapRef, ChinaMapProps>(({ friends }, ref) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const chinaFriends = getChinaFriends(friends);
+
+  useImperativeHandle(ref, () => ({
+    flyTo: (lat: number, lng: number, zoom = 10) => {
+      if (mapRef.current) {
+        mapRef.current.flyTo([lat, lng], zoom, {
+          duration: 1.5
+        });
+      }
+    }
+  }));
 
   // 创建自定义图标
   const createCustomIcon = (friend: Friend) => {
@@ -59,6 +70,7 @@ const ChinaMap: React.FC<ChinaMapProps> = ({ friends }) => {
         zoom={DEFAULT_CHINA_VIEWPORT.zoom}
         className="china-map"
         style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -91,6 +103,8 @@ const ChinaMap: React.FC<ChinaMapProps> = ({ friends }) => {
       )}
     </div>
   );
-};
+});
+
+ChinaMap.displayName = 'ChinaMap';
 
 export default ChinaMap;

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
+import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
-import { Friend } from '../types';
+import { Friend, MapRef } from '../types';
 import { getWorldFriends, DEFAULT_WORLD_VIEWPORT } from '../utils/mapUtils';
 import FriendInfo from './FriendInfo';
 import 'leaflet/dist/leaflet.css';
@@ -18,9 +18,20 @@ interface WorldMapProps {
   friends: Friend[];
 }
 
-const WorldMap: React.FC<WorldMapProps> = ({ friends }) => {
+const WorldMap = forwardRef<MapRef, WorldMapProps>(({ friends }, ref) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const worldFriends = getWorldFriends(friends);
+
+  useImperativeHandle(ref, () => ({
+    flyTo: (lat: number, lng: number, zoom = 10) => {
+      if (mapRef.current) {
+        mapRef.current.flyTo([lat, lng], zoom, {
+          duration: 1.5
+        });
+      }
+    }
+  }));
 
   // 创建自定义图标
   const createCustomIcon = (friend: Friend) => {
@@ -60,6 +71,7 @@ const WorldMap: React.FC<WorldMapProps> = ({ friends }) => {
         className="world-map"
         worldCopyJump={true}
         style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -92,6 +104,8 @@ const WorldMap: React.FC<WorldMapProps> = ({ friends }) => {
       )}
     </div>
   );
-};
+});
+
+WorldMap.displayName = 'WorldMap';
 
 export default WorldMap;
