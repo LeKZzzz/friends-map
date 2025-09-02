@@ -1,7 +1,15 @@
 {
   "name": "friends-map",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "A dynamic web application to visualize friends' distribution on world and China maps",
+  "keywords": ["react", "typescript", "leaflet", "map", "friends", "visualization"],
+  "author": "LeKZzzz",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LeKZzzz/friends-map"
+  },
   "dependencies": {
     "@types/leaflet": "^1.9.19",
     "@types/node": "^16.18.0",
@@ -18,7 +26,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src/**/*.{ts,tsx,css,md}",
+    "type-check": "tsc --noEmit"
   },
   "eslintConfig": {
     "extends": [

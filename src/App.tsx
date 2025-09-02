@@ -1,30 +1,68 @@
 import React, { useState, useEffect, useRef } from 'react';
 import WorldMap from './components/WorldMap';
 import ChinaMap from './components/ChinaMap';
-import { Friend, MapRef } from './types';
+import FriendItem from './components/FriendItem';
+import CustomSelect from './components/CustomSelect';
+import { Friend } from './types';
+import { useFriendsFilter, useMapNavigation } from './hooks/useFriends';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import friendsData from './data/friends.json';
 import './App.css';
 
 const App: React.FC = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeMap, setActiveMap] = useState<'world' | 'china'>('world');
-  const worldMapRef = useRef<MapRef>(null);
-  const chinaMapRef = useRef<MapRef>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const { filteredFriends, regions, totalCount, filteredCount } = useFriendsFilter(friends, {
+    searchQuery,
+    selectedRegion
+  });
+
+  const { worldMapRef, chinaMapRef, flyToFriend } = useMapNavigation(activeMap);
+
+  // 键盘快捷键
+  useKeyboardShortcuts(
+    () => setActiveMap(prev => prev === 'world' ? 'china' : 'world'),
+    () => searchInputRef.current?.focus(),
+    () => setSearchQuery('')
+  );
 
   useEffect(() => {
-    setFriends(friendsData);
-  }, []);
-
-  const handleFriendClick = (friend: Friend) => {
-    const currentMapRef = activeMap === 'world' ? worldMapRef : chinaMapRef;
-    if (currentMapRef.current) {
-      currentMapRef.current.flyTo(friend.latitude, friend.longitude, 12);
+    try {
+      setFriends(friendsData);
+      setLoading(false);
+    } catch (err) {
+      setError('加载朋友数据失败');
+      setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    setFriends(friendsData);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="app">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>正在加载朋友数据...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="app">
+        <div className="error-container">
+          <p>❌ {error}</p>
+          <button onClick={() => window.location.reload()}>重新加载</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -61,29 +99,71 @@ const App: React.FC = () => {
       
       <div className="app-main">
         <aside className="friends-sidebar">
-          <h3>朋友列表 ({friends.length})</h3>
-          <div className="friends-list">
-            {friends.map((friend) => (
-              <div 
-                key={friend.id} 
-                className="friend-item"
-                onClick={() => handleFriendClick(friend)}
-              >
-                <img 
-                  src={friend.avatar || `https://www.gravatar.com/avatar/${friend.id}?s=40&d=monsterid&r=pg`} 
-                  alt={friend.name}
-                  className="friend-item-avatar"
+          <div className="sidebar-header">
+            <h3>朋友列表 ({filteredCount}/{totalCount})</h3>
+            
+            {/* 搜索框 */}
+            <div className="search-container">
+              <label className="filter-label">搜索朋友</label>
+              <div className="search-input-wrapper">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="🔍 输入姓名、城市或地址..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
                 />
-                <div className="friend-item-info">
-                  <h4>{friend.name}</h4>
-                  <p>{friend.province} {friend.city}</p>
-                  {friend.address && <small>{friend.address}</small>}
-                </div>
-                <div className="friend-item-action">
-                  🎯
-                </div>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="search-clear-btn"
+                    title="清空搜索"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
-            ))}
+            </div>
+            
+            {/* 地区筛选 */}
+            <div className="filter-container">
+              <label className="filter-label">按地区筛选</label>
+              <CustomSelect
+                value={selectedRegion}
+                onChange={setSelectedRegion}
+                options={[
+                  { value: 'all', label: `🌏 全部地区 (${totalCount})` },
+                  ...regions.map(region => {
+                    const count = friends.filter(f => f.province === region).length;
+                    return {
+                      value: region,
+                      label: `📍 ${region} (${count})`,
+                      count
+                    };
+                  })
+                ]}
+                placeholder="选择地区"
+              />
+            </div>
+          </div>
+          
+          <div className="friends-list">
+            {filteredFriends.length > 0 ? (
+              filteredFriends.map((friend) => (
+                <FriendItem
+                  key={friend.id}
+                  friend={friend}
+                  onClick={flyToFriend}
+                />
+              ))
+            ) : (
+              <div className="no-results">
+                <p>😔 没有找到匹配的朋友</p>
+                <small>尝试调整搜索条件</small>
+              </div>
+            )}
           </div>
         </aside>
         

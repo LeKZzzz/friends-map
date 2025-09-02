@@ -101,6 +101,7 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   overflow: hidden;
   height: calc(100vh - 140px);
+  z-index: 1; /* 保持较低但正常的层级 */
 }
 
 .world-map,
@@ -115,6 +116,12 @@
   height: 100% !important;
   width: 100% !important;
   border-radius: 8px;
+}
+
+/* 只针对性地降低某些Leaflet控件的z-index */
+.leaflet-control-zoom,
+.leaflet-control-attribution {
+  z-index: 100 !important;
 }
 
 /* 自定义标记样式 */
@@ -177,22 +184,249 @@
   background-color: white;
   border-right: 1px solid #ddd;
   padding: 1rem;
-  overflow-y: auto;
+  overflow: hidden; /* 隐藏侧边栏的滚动条 */
   box-shadow: 2px 0 4px rgba(0,0,0,0.1);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1000; /* 确保侧边栏在地图之上 */
 }
 
-.friends-sidebar h3 {
+
+
+.sidebar-header h3 {
   margin: 0 0 1rem 0;
   color: #2c3e50;
   border-bottom: 2px solid #3498db;
   padding-bottom: 0.5rem;
+  position: relative;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-header h3::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  animation: progressBar 1.5s ease-out forwards;
+}
+
+@keyframes progressBar {
+  to {
+    width: 100%;
+  }
+}
+
+.search-container {
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+
+/* 搜索输入框包装器 */
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-container::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+}
+
+/* 优化搜索框右边距，为清空按钮留空间 */
+.search-input-wrapper .search-input {
+  padding-right: 2.5rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 
+    0 0 0 3px rgba(52, 152, 219, 0.15),
+    0 0 20px rgba(52, 152, 219, 0.1);
+  background-color: white;
+  transform: translateY(-1px);
+}
+
+.search-input::placeholder {
+  color: #6c757d;
+  transition: color 0.3s ease;
+}
+
+.search-input:focus::placeholder {
+  color: #adb5bd;
+  font-style: italic;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.search-clear-btn:hover {
+  background-color: #e9ecef;
+  color: #495057;
+  transform: scale(1.1);
+}
+
+.search-clear-btn:active {
+  transform: scale(0.95);
+  background-color: #dee2e6;
+}
+
+
+
+.filter-container {
+  margin-bottom: 0.5rem;
+  min-height: 4.5rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* 添加过渡动画减少视觉跳动 */
+  transition: all 0.2s ease;
+}
+
+.filter-container .filter-label {
+  flex-shrink: 0;
+}
+
+.filter-container .region-filter {
+  flex-shrink: 0;
 }
 
 .friends-list {
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding-right: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f8f9fa;
+  /* 确保有最小高度，防止布局跳动 */
+  min-height: 200px;
+}
+
+/* 朋友列表滚动条样式 */
+.friends-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.friends-list::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 3px;
+  margin: 4px;
+}
+
+.friends-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.friends-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+  transform: scaleX(1.2);
+}
+
+/* 滚动条在聚焦时的样式 */
+.friends-list:hover::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+}
+
+.no-results {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #666;
+}
+
+.no-results p {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.no-results small {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+/* 加载和错误状态 */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.error-container button:hover {
+  background-color: #c0392b;
 }
 
 .friend-item {
@@ -204,12 +438,14 @@
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
+  margin-right: 2px; /* 为hover效果预留空间 */
 }
 
 .friend-item:hover {
   background-color: #e9ecef;
   transform: translateX(2px);
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-right: 0; /* hover时恢复margin */
 }
 
 .friend-item:active {
@@ -371,6 +607,154 @@
   color: #999;
 }
 
+/* 自定义选择框样式 */
+.custom-select {
+  position: relative;
+  width: 100%;
+  z-index: 1001; /* 略高于侧边栏，但不过分 */
+}
+
+.custom-select-trigger {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 2.5rem;
+}
+
+.custom-select-trigger:hover {
+  border-color: #ced4da;
+  background-color: #e9ecef;
+}
+
+.custom-select-trigger.open {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+  background-color: white;
+  z-index: 1002; /* 确保触发器也在最上层 */
+  position: relative;
+}
+
+.custom-select-value {
+  flex: 1;
+  text-align: left;
+  color: #333;
+}
+
+.custom-select-arrow {
+  font-size: 0.8rem;
+  color: #6c757d;
+  transition: transform 0.3s ease;
+  margin-left: 0.5rem;
+}
+
+.custom-select-arrow.open {
+  transform: rotate(180deg);
+  color: #3498db;
+}
+
+/* 向右弹出的选项容器 */
+.custom-select-options {
+  position: fixed; /* 使用fixed定位，相对于视口 */
+  width: 200px;
+  min-width: 200px;
+  background-color: white;
+  border: 2px solid #3498db;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000; /* 使用合理的高层级值 */
+  max-height: 300px;
+  overflow-y: auto;
+  animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.custom-select-option {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f3f4;
+  font-size: 0.9rem;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.custom-select-option:last-child {
+  border-bottom: none;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.custom-select-option:first-child {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.custom-select-option:hover {
+  background-color: #f8f9fa;
+  color: #2c3e50;
+}
+
+.custom-select-option.selected {
+  background-color: #3498db;
+  color: white;
+  font-weight: 600;
+}
+
+.custom-select-option.selected:hover {
+  background-color: #2980b9;
+}
+
+/* 自定义滚动条样式 */
+.custom-select-options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-select-options::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 3px;
+}
+
+.custom-select-options::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.custom-select-options::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* 筛选标签样式 */
+.filter-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .app-main {
@@ -383,6 +767,17 @@
     border-right: none;
     border-bottom: 1px solid #ddd;
     flex-shrink: 0;
+    overflow: hidden; /* 移动端也隐藏侧边栏滚动条 */
+  }
+  
+  .friends-list {
+    overflow-y: auto; /* 移动端使用auto */
+    padding-right: 0.25rem; /* 移动端减少右边距 */
+  }
+  
+  /* 移动端滚动条样式调整 */
+  .friends-list::-webkit-scrollbar {
+    width: 4px;
   }
   
   .world-map-container,
@@ -410,5 +805,28 @@
   .friend-info-card {
     margin: 1rem;
     width: calc(100% - 2rem);
+  }
+  
+  /* 移动端自定义选择框向下弹出 */
+  .custom-select-options {
+    position: absolute !important; /* 移动端使用absolute定位 */
+    left: 0 !important;
+    top: 100% !important;
+    margin-left: 0 !important;
+    margin-top: 0.25rem !important;
+    width: 100% !important;
+    min-width: unset !important;
+    animation: slideInDown 0.2s ease-out !important;
+  }
+  
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
