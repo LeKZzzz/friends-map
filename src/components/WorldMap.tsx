@@ -1,4 +1,4 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Friend, MapRef } from '../types';
@@ -21,6 +21,7 @@ interface WorldMapProps {
 const WorldMap = forwardRef<MapRef, WorldMapProps>(({ friends }, ref) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
   const worldFriends = getWorldFriends(friends);
 
   useImperativeHandle(ref, () => ({
@@ -62,6 +63,33 @@ const WorldMap = forwardRef<MapRef, WorldMapProps>(({ friends }, ref) => {
       iconAnchor: [20, 40],
     });
   };
+
+  // 渲染朋友标记
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !friends.length) return;
+
+    // 清除现有标记
+    markersRef.current.forEach(marker => map.removeLayer(marker));
+    markersRef.current = [];
+
+    // 显示所有朋友标记
+    friends.forEach(friend => {
+      if (friend.latitude && friend.longitude) {
+        const marker = L.marker([friend.latitude, friend.longitude])
+          .addTo(map)
+          .bindPopup(`
+            <div class="popup-content">
+              <h3>${friend.name}</h3>
+              <p>${friend.city}, ${friend.province}</p>
+              <small>坐标: ${friend.latitude}, ${friend.longitude}</small>
+            </div>
+          `);
+
+        markersRef.current.push(marker);
+      }
+    });
+  }, [friends]);
 
   return (
     <div className="world-map-container">

@@ -1,62 +1,52 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Friend, MapRef } from '../types';
+import { useMemo } from 'react';
+import { useDebounce } from './useDebounce';
+import { Friend } from '../types';
 
-interface UseFriendsFilterOptions {
+interface FilterOptions {
   searchQuery: string;
   selectedRegion: string;
 }
 
-export const useFriendsFilter = (friends: Friend[], options: UseFriendsFilterOptions) => {
-  const { searchQuery, selectedRegion } = options;
+export const useFriendsFilter = (friends: Friend[], options: FilterOptions) => {
+  // 使用防抖优化搜索性能
+  const debouncedSearchQuery = useDebounce(options.searchQuery, 300);
 
-  const filteredFriends = useMemo(() => {
+  const filteredData = useMemo(() => {
     let filtered = friends;
 
-    // 按地区筛选
-    if (selectedRegion !== 'all') {
-      filtered = filtered.filter(friend => friend.province === selectedRegion);
+    // 地区筛选
+    if (options.selectedRegion && options.selectedRegion !== 'all') {
+      filtered = filtered.filter(friend => friend.province === options.selectedRegion);
     }
 
-    // 按搜索关键词筛选
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(friend => 
+    // 搜索筛选（使用防抖后的查询）
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim();
+      filtered = filtered.filter(friend =>
         friend.name.toLowerCase().includes(query) ||
-        friend.province.toLowerCase().includes(query) ||
         friend.city.toLowerCase().includes(query) ||
+        friend.province.toLowerCase().includes(query) ||
         (friend.address && friend.address.toLowerCase().includes(query))
       );
     }
 
     return filtered;
-  }, [friends, searchQuery, selectedRegion]);
+  }, [friends, options.selectedRegion, debouncedSearchQuery]);
 
   const regions = useMemo(() => {
-    return Array.from(new Set(friends.map(friend => friend.province))).sort();
+    const uniqueRegions = Array.from(new Set(friends.map(friend => friend.province)));
+    return uniqueRegions.sort();
   }, [friends]);
 
-  return {
-    filteredFriends,
-    regions,
+  const stats = useMemo(() => ({
     totalCount: friends.length,
-    filteredCount: filteredFriends.length
-  };
-};
-
-export const useMapNavigation = (activeMap: 'world' | 'china') => {
-  const worldMapRef = useRef<MapRef>(null);
-  const chinaMapRef = useRef<MapRef>(null);
-
-  const flyToFriend = (friend: Friend) => {
-    const currentMapRef = activeMap === 'world' ? worldMapRef : chinaMapRef;
-    if (currentMapRef.current) {
-      currentMapRef.current.flyTo(friend.latitude, friend.longitude, 12);
-    }
-  };
+    filteredCount: filteredData.length,
+    regionCount: regions.length,
+  }), [friends.length, filteredData.length, regions.length]);
 
   return {
-    worldMapRef,
-    chinaMapRef,
-    flyToFriend
+    filteredFriends: filteredData,
+    regions,
+    ...stats,
   };
 };

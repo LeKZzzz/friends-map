@@ -1,8 +1,8 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Friend, MapRef } from '../types';
-import { getChinaFriends, DEFAULT_CHINA_VIEWPORT } from '../utils/mapUtils';
+import { DEFAULT_CHINA_VIEWPORT } from '../utils/mapUtils';
 import FriendInfo from './FriendInfo';
 import 'leaflet/dist/leaflet.css';
 
@@ -21,7 +21,7 @@ interface ChinaMapProps {
 const ChinaMap = forwardRef<MapRef, ChinaMapProps>(({ friends }, ref) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const chinaFriends = getChinaFriends(friends);
+  const markersRef = useRef<L.Marker[]>([]);
 
   useImperativeHandle(ref, () => ({
     flyTo: (lat: number, lng: number, zoom = 10) => {
@@ -63,6 +63,34 @@ const ChinaMap = forwardRef<MapRef, ChinaMapProps>(({ friends }, ref) => {
     });
   };
 
+  // 渲染朋友标记
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !friends.length) return;
+
+    // 清除现有标记
+    markersRef.current.forEach(marker => map.removeLayer(marker));
+    markersRef.current = [];
+
+    // 显示所有朋友，不进行地域过滤
+    // 用户可以通过侧边栏的筛选功能来过滤地区
+    friends.forEach(friend => {
+      if (friend.latitude && friend.longitude) {
+        const marker = L.marker([friend.latitude, friend.longitude])
+          .addTo(map)
+          .bindPopup(`
+            <div class="popup-content">
+              <h3>${friend.name}</h3>
+              <p>${friend.city}, ${friend.province}</p>
+              <small>坐标: ${friend.latitude}, ${friend.longitude}</small>
+            </div>
+          `);
+
+        markersRef.current.push(marker);
+      }
+    });
+  }, [friends]);
+
   return (
     <div className="china-map-container">
       <MapContainer
@@ -76,7 +104,7 @@ const ChinaMap = forwardRef<MapRef, ChinaMapProps>(({ friends }, ref) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {chinaFriends.map((friend) => (
+        {friends.map((friend) => (
           <Marker
             key={friend.id}
             position={[friend.latitude, friend.longitude]}
