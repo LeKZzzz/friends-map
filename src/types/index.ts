@@ -8,6 +8,7 @@ export interface Friend {
   longitude: number;
   avatar?: string;
   description?: string;
+  tags?: string[];
 }
 
 export interface MapBounds {

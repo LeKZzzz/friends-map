@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { useUserPreferences } from '../hooks/useStorage';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -10,15 +11,36 @@ interface SettingsPanelProps {
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
   const { theme, setTheme, effectiveTheme } = useTheme();
   const { preferences, updatePreference } = useUserPreferences();
+  const { containerRef, handleKeyDown } = useFocusTrap(isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="settings-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="设置"
+    >
+      <div
+        className="settings-panel"
+        ref={containerRef}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
         <div className="settings-header">
           <h3>⚙️ 设置</h3>
-          <button 
+          <button
             className="settings-close-btn"
             onClick={onClose}
             aria-label="关闭设置"
@@ -32,20 +54,24 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
           <div className="setting-group">
             <label className="setting-label">🎨 主题设置</label>
             <div className="theme-options">
-              {(['light', 'dark'] as const).map((themeName) => (
+              {([
+                { value: 'light' as const, label: '☀️ 亮色' },
+                { value: 'dark' as const, label: '🌙 暗色' },
+                { value: 'system' as const, label: '💻 跟随系统' },
+              ]).map(({ value: themeValue, label }) => (
                 <button
-                  key={themeName}
-                  className={`theme-btn ${theme === themeName ? 'active' : ''}`}
-                  onClick={() => setTheme(themeName)}
-                  aria-pressed={theme === themeName}
+                  key={themeValue}
+                  className={`theme-btn ${theme === themeValue ? 'active' : ''}`}
+                  onClick={() => setTheme(themeValue)}
+                  aria-pressed={theme === themeValue}
                 >
-                  {themeName === 'light' && '☀️ 亮色'}
-                  {themeName === 'dark' && '🌙 暗色'}
+                  {label}
                 </button>
               ))}
             </div>
             <p className="setting-description">
               当前主题: {effectiveTheme === 'light' ? '亮色' : '暗色'}
+              {theme === 'system' && '（跟随系统）'}
             </p>
           </div>
 
@@ -80,18 +106,19 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
               </div>
               <div className="stat-item">
                 <span className="stat-label">当前主题</span>
-                <span className="stat-value">{effectiveTheme}</span>
+                <span className="stat-value">{effectiveTheme === 'light' ? '亮色' : '暗色'}</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="settings-footer">
-          <button 
+          <button
             className="reset-btn"
             onClick={() => {
               if (window.confirm('确定要重置所有设置吗？')) {
-                localStorage.clear();
+                localStorage.removeItem('userPreferences');
+                localStorage.removeItem('theme');
                 window.location.reload();
               }
             }}

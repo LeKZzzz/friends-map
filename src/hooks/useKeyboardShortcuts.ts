@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export const useKeyboardShortcuts = (
   onToggleMap: () => void,
@@ -6,8 +6,13 @@ export const useKeyboardShortcuts = (
   onClearSearch: () => void,
   onOpenSettings?: () => void
 ) => {
+  const [showHelp, setShowHelp] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // 跳过 IME 组合输入
+      if ((event as any).isComposing) return;
+
       // 忽略在输入框内的按键
       const target = event.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
@@ -15,6 +20,15 @@ export const useKeyboardShortcuts = (
         if (event.key === 'Escape') {
           onClearSearch();
           (target as HTMLInputElement).blur();
+        }
+        return;
+      }
+
+      // 如果快捷键帮助面板已打开，Escape 关闭它
+      if (showHelp) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          setShowHelp(false);
         }
         return;
       }
@@ -43,6 +57,10 @@ export const useKeyboardShortcuts = (
             onOpenSettings();
           }
           break;
+        case '?':
+          event.preventDefault();
+          setShowHelp(true);
+          break;
         default:
           break;
       }
@@ -52,5 +70,7 @@ export const useKeyboardShortcuts = (
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onToggleMap, onFocusSearch, onClearSearch, onOpenSettings]);
+  }, [onToggleMap, onFocusSearch, onClearSearch, onOpenSettings, showHelp]);
+
+  return { showHelp, setShowHelp };
 };

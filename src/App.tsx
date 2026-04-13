@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import WorldMap from './components/WorldMap';
-import ChinaMap from './components/ChinaMap';
+import MapView from './components/MapView';
 import FriendItem from './components/FriendItem';
 import CustomSelect from './components/CustomSelect';
 import ErrorBoundary from './components/ErrorBoundary';
 import SettingsPanel from './components/SettingsPanel';
+import StatsPanel from './components/StatsPanel';
+import DataManager from './components/DataManager';
 import { Friend } from './types';
 import { useFriendsFilter } from './hooks/useFriends';
 import { useMapNavigation } from './hooks/useMapNavigation';
@@ -12,48 +13,66 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { useUserPreferences } from './hooks/useStorage';
 import { usePerformanceMonitor, useMemoryMonitor, useNetworkMonitor } from './hooks/usePerformance';
+import { DEFAULT_WORLD_VIEWPORT, DEFAULT_CHINA_VIEWPORT } from './utils/mapUtils';
 import friendsData from './data/friends.json';
 import './App.css';
 
 const App: React.FC = () => {
-  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friends, setFriends] = useState<Friend[]>(() => {
+    try {
+      const stored = localStorage.getItem('friendsData');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* fall through to default */ }
+    return friendsData as Friend[];
+  });
   const [activeMap, setActiveMap] = useState<'world' | 'china'>('world');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string>('all');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [highlightedFriendId, setHighlightedFriendId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // 初始化Hooks
-  const { preferences, setPreferences, updatePreference } = useUserPreferences();
-  const { effectiveTheme } = useTheme();
+  const { preferences, setPreferences } = useUserPreferences();
+  useTheme();
   const isOnline = useNetworkMonitor();
   
   // 性能监控 (仅在开发环境启用，但始终调用Hook)
   usePerformanceMonitor('App');
   useMemoryMonitor();
 
-  const { filteredFriends, regions, totalCount, filteredCount } = useFriendsFilter(friends, {
+  const { filteredFriends, regions, allTags, totalCount, filteredCount } = useFriendsFilter(friends, {
     searchQuery,
-    selectedRegion
+    selectedRegion,
+    selectedTag
   });
 
-  const { worldMapRef, chinaMapRef, flyToFriend } = useMapNavigation(activeMap);
+  const { mapRef, flyToFriend } = useMapNavigation();
 
-  // 优化地区选项的计算，避免重复计算
-  const regionOptions = useMemo(() => [
-    { value: 'all', label: `🌏 全部地区 (${totalCount})` },
-    ...regions.map(region => {
-      const count = friends.filter(f => f.province === region).length;
-      return {
-        value: region,
-        label: `📍 ${region} (${count})`,
-        count
-      };
-    })
-  ], [regions, friends, totalCount]);
+  // 优化地区选项的计算：一次遍历统计各省份数量，O(n)
+  const regionOptions = useMemo(() => {
+    const provinceCount = friends.reduce((acc, f) => {
+      acc.set(f.province, (acc.get(f.province) || 0) + 1);
+      return acc;
+    }, new Map<string, number>());
+
+    return [
+      { value: 'all', label: `🌏 全部地区 (${totalCount})` },
+      ...regions.map(region => {
+        const count = provinceCount.get(region) || 0;
+        return {
+          value: region,
+          label: `📍 ${region} (${count})`,
+          count
+        };
+      })
+    ];
+  }, [regions, friends, totalCount]);
 
   // 优化回调函数，避免不必要的重渲染
   const handleMapToggle = useCallback(() => {
@@ -86,9 +105,25 @@ const App: React.FC = () => {
     setSelectedRegion(value);
   }, []);
 
-  const handleRetry = useCallback(() => {
-    window.location.reload();
+  const handleTagChange = useCallback((value: string) => {
+    setSelectedTag(value);
   }, []);
+
+  // 标签选项
+  const tagOptions = useMemo(() => {
+    if (allTags.length === 0) return [];
+    const tagCount = friends.reduce((acc, f) => {
+      f.tags?.forEach(t => acc.set(t, (acc.get(t) || 0) + 1));
+      return acc;
+    }, new Map<string, number>());
+    return [
+      { value: 'all', label: `🏷️ 全部标签` },
+      ...allTags.map(tag => ({
+        value: tag,
+        label: `🏷️ ${tag} (${tagCount.get(tag) || 0})`,
+      }))
+    ];
+  }, [allTags, friends]);
 
   const handleOpenSettings = useCallback(() => {
     setSettingsOpen(true);
@@ -102,50 +137,73 @@ const App: React.FC = () => {
     setSidebarCollapsed(prev => !prev);
   }, []);
 
+  // 移动端滑动手势
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const diffX = endX - startX;
+      const diffY = endY - startY;
+
+      // 只在水平滑动距离 > 垂直滑动距离时触发
+      if (Math.abs(diffX) < 60 || Math.abs(diffX) < Math.abs(diffY)) return;
+
+      // 从左边缘右滑 → 打开侧边栏
+      if (diffX > 0 && startX < 30 && sidebarCollapsed) {
+        setSidebarCollapsed(false);
+      }
+      // 左滑 → 关闭侧边栏
+      if (diffX < 0 && !sidebarCollapsed) {
+        setSidebarCollapsed(true);
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [sidebarCollapsed]);
+
+  const handleImportFriends = useCallback((imported: Friend[]) => {
+    setFriends(imported);
+    try {
+      localStorage.setItem('friendsData', JSON.stringify(imported));
+    } catch (e) {
+      console.warn('保存导入数据到 localStorage 失败:', e);
+    }
+  }, []);
+
   // 键盘快捷键
-  useKeyboardShortcuts(
-    handleMapToggle, 
-    handleSearchFocus, 
+  const { showHelp, setShowHelp } = useKeyboardShortcuts(
+    handleMapToggle,
+    handleSearchFocus,
     handleSearchClear,
     handleOpenSettings
   );
 
   // 应用用户偏好设置（仅在初始化时应用）
-  const isInitialMount = useRef(true);
   useEffect(() => {
-    // 只在应用启动时，根据autoSave设置来决定是否恢复上次的地图类型
-    if (isInitialMount.current && preferences.autoSave && preferences.mapType !== activeMap) {
+    if (preferences.autoSave && preferences.mapType !== activeMap) {
       setActiveMap(preferences.mapType);
     }
-    isInitialMount.current = false;
-  }, [preferences.autoSave, preferences.mapType, activeMap]);
-
-  // 当用户手动切换地图时保存到偏好设置
-  const saveMapTypeToPreferences = useCallback((mapType: 'world' | 'china') => {
-    if (preferences.autoSave) {
-      setPreferences(prev => ({
-        ...prev,
-        mapType
-      }));
-    }
-  }, [preferences.autoSave, setPreferences]);
-
-  useEffect(() => {
-    try {
-      setFriends(friendsData);
-      setLoading(false);
-    } catch (err) {
-      setError('加载朋友数据失败');
-      setLoading(false);
-      console.error('Failed to load friends data:', err);
-    }
+    // 仅在挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 添加错误边界处理
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       console.error('Global error:', event.error);
-      setError('应用程序遇到错误，请刷新页面重试');
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -161,33 +219,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="app">
-        <div className="loading-container">
-          <div className="loading-spinner" aria-label="加载中"></div>
-          <p>正在加载朋友数据...</p>
-          {!isOnline && (
-            <p className="offline-notice">⚠️ 网络连接异常，请检查网络设置</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="app">
-        <div className="error-container" role="alert">
-          <p>❌ {error}</p>
-          <button onClick={handleRetry} aria-label="重新加载应用">
-            重新加载
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <ErrorBoundary>
       <div className="app">
@@ -195,23 +226,29 @@ const App: React.FC = () => {
           <h1>🗺️ 朋友分布地图</h1>
           <div className="header-controls">
             <div className="map-controls" role="group" aria-label="地图切换">
-              <button 
+              <button
                 className={`map-btn ${activeMap === 'world' ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveMap('world');
-                  saveMapTypeToPreferences('world');
-                }}
+                onClick={() => setActiveMap(prev => {
+                  if (prev !== 'world') {
+                    if (preferences.autoSave) setPreferences(p => ({ ...p, mapType: 'world' as const }));
+                    return 'world';
+                  }
+                  return prev;
+                })}
                 aria-pressed={activeMap === 'world'}
                 aria-label="切换到世界地图"
               >
                 🌍 世界地图
               </button>
-              <button 
+              <button
                 className={`map-btn ${activeMap === 'china' ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveMap('china');
-                  saveMapTypeToPreferences('china');
-                }}
+                onClick={() => setActiveMap(prev => {
+                  if (prev !== 'china') {
+                    if (preferences.autoSave) setPreferences(p => ({ ...p, mapType: 'china' as const }));
+                    return 'china';
+                  }
+                  return prev;
+                })}
                 aria-pressed={activeMap === 'china'}
                 aria-label="切换到中国地图"
               >
@@ -304,6 +341,20 @@ const App: React.FC = () => {
                   aria-label="按地区筛选朋友"
                 />
               </div>
+
+              {/* 标签筛选 */}
+              {allTags.length > 0 && (
+                <div className="filter-container">
+                  <label className="filter-label" htmlFor="tag-filter">按标签筛选</label>
+                  <CustomSelect
+                    value={selectedTag}
+                    onChange={handleTagChange}
+                    options={tagOptions}
+                    placeholder="选择标签"
+                    aria-label="按标签筛选朋友"
+                  />
+                </div>
+              )}
             </div>
             
             <div className="friends-list-container">
@@ -313,7 +364,11 @@ const App: React.FC = () => {
                     <FriendItem
                       key={friend.id}
                       friend={friend}
-                      onClick={flyToFriend}
+                      onClick={(f) => {
+                        flyToFriend(f);
+                        setHighlightedFriendId(f.id);
+                        setTimeout(() => setHighlightedFriendId(null), 1500);
+                      }}
                     />
                   ))
                 ) : (
@@ -324,24 +379,52 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
+
+            <DataManager friends={friends} onImport={handleImportFriends} />
+
+            <StatsPanel friends={friends} />
               </>
             )}
           </aside>
           
           <main className="map-area" role="main" aria-label="地图显示区域">
-            {activeMap === 'world' ? (
-              <WorldMap ref={worldMapRef} friends={friends} />
-            ) : (
-              <ChinaMap ref={chinaMapRef} friends={friends} />
-            )}
+            <MapView
+              ref={mapRef}
+              friends={filteredFriends}
+              allFriends={friends}
+              viewport={activeMap === 'world' ? DEFAULT_WORLD_VIEWPORT : DEFAULT_CHINA_VIEWPORT}
+              mapType={activeMap}
+              highlightedFriendId={highlightedFriendId}
+            />
           </main>
         </div>
 
         {/* 设置面板 */}
-        <SettingsPanel 
+        <SettingsPanel
           isOpen={settingsOpen}
           onClose={handleCloseSettings}
         />
+
+        {/* 快捷键帮助面板 */}
+        {showHelp && (
+          <div className="help-overlay" onClick={() => setShowHelp(false)}>
+            <div className="help-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="help-header">
+                <h3>⌨️ 键盘快捷键</h3>
+                <button className="settings-close-btn" onClick={() => setShowHelp(false)} aria-label="关闭帮助">✕</button>
+              </div>
+              <div className="help-content">
+                <div className="help-item"><kbd>M</kbd> <span>切换地图类型</span></div>
+                <div className="help-item"><kbd>F</kbd> <span>聚焦搜索框</span></div>
+                <div className="help-item"><kbd>Esc</kbd> <span>清空搜索 / 关闭面板</span></div>
+                <div className="help-item"><kbd>,</kbd> <span>打开设置</span></div>
+                <div className="help-item"><kbd>?</kbd> <span>显示快捷键帮助</span></div>
+                <div className="help-item"><kbd>Tab</kbd> <span>在侧边栏中导航</span></div>
+                <div className="help-item"><kbd>Enter</kbd> <span>激活好友定位</span></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ErrorBoundary>
   );

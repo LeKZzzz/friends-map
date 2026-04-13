@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 type StorageType = 'localStorage' | 'sessionStorage';
 
@@ -29,7 +29,7 @@ export function useStorage<T>(
 
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (!storage) return defaultValue;
-    
+
     try {
       const item = storage.getItem(key);
       if (item === null) return defaultValue;
@@ -40,22 +40,28 @@ export function useStorage<T>(
     }
   });
 
+  // 用 ref 追踪最新值，避免闭包陷阱
+  const storedValueRef = useRef(storedValue);
+  storedValueRef.current = storedValue;
+
   const setValue = useCallback((value: T | ((val: T) => T)) => {
     try {
-      const newValue = value instanceof Function ? value(storedValue) : value;
+      const newValue = value instanceof Function ? value(storedValueRef.current) : value;
       setStoredValue(newValue);
-      
+      storedValueRef.current = newValue;
+
       if (storage) {
         storage.setItem(key, serializer.stringify(newValue));
       }
     } catch (error) {
       console.warn(`Error setting ${storageType} key "${key}":`, error);
     }
-  }, [key, storedValue, storage, serializer, storageType]);
+  }, [key, storage, serializer, storageType]);
 
   const removeValue = useCallback(() => {
     try {
       setStoredValue(defaultValue);
+      storedValueRef.current = defaultValue;
       if (storage) {
         storage.removeItem(key);
       }
@@ -71,7 +77,9 @@ export function useStorage<T>(
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === key && e.newValue !== null) {
         try {
-          setStoredValue(serializer.parse(e.newValue));
+          const newValue = serializer.parse(e.newValue);
+          setStoredValue(newValue);
+          storedValueRef.current = newValue;
         } catch (error) {
           console.warn(`Error parsing storage event for key "${key}":`, error);
         }
@@ -88,7 +96,7 @@ export function useStorage<T>(
 // 专门用于用户偏好设置的Hook
 export function useUserPreferences() {
   const [preferences, setPreferences] = useStorage('userPreferences', {
-    theme: 'light' as 'light' | 'dark',
+    theme: 'light' as 'light' | 'dark' | 'system',
     language: 'zh-CN',
     mapType: 'world' as 'world' | 'china',
     autoSave: true,

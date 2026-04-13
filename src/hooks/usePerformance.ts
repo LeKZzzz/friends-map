@@ -1,48 +1,32 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const usePerformanceMonitor = (componentName: string) => {
-  const renderStartTime = useRef<number>(0);
   const renderCount = useRef<number>(0);
 
   useEffect(() => {
-    renderStartTime.current = performance.now();
     renderCount.current += 1;
-  });
 
-  useEffect(() => {
-    const renderEndTime = performance.now();
-    const renderTime = renderEndTime - renderStartTime.current;
-    
     if (process.env.NODE_ENV === 'development') {
-      console.log(`${componentName} 渲染时间: ${renderTime.toFixed(2)}ms (第${renderCount.current}次渲染)`);
-      
-      // 如果渲染时间超过阈值，发出警告
-      if (renderTime > 16) { // 16ms 对应 60fps
-        console.warn(`${componentName} 渲染时间较长: ${renderTime.toFixed(2)}ms`);
+      if (renderCount.current > 1) {
+        console.log(`${componentName} 第${renderCount.current}次渲染`);
+      }
+
+      if (renderCount.current > 10) {
+        console.warn(`${componentName} 渲染次数过多: ${renderCount.current}次`);
       }
     }
-
-    return () => {
-      // 清理工作
-    };
   });
 
   return {
     renderCount: renderCount.current,
-    logPerformance: (operation: string, startTime: number) => {
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`${componentName} - ${operation}: ${duration.toFixed(2)}ms`);
-      }
-    }
   };
 };
 
 // 内存使用监控
 export const useMemoryMonitor = () => {
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
     const checkMemory = () => {
       if ('memory' in performance) {
         const memory = (performance as any).memory;
@@ -56,16 +40,24 @@ export const useMemoryMonitor = () => {
 
     // 每30秒检查一次内存使用
     const interval = setInterval(checkMemory, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 };
 
 // 网络状态监控
 export const useNetworkMonitor = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
   useEffect(() => {
-    const handleOnline = () => console.log('网络连接已恢复');
-    const handleOffline = () => console.warn('网络连接已断开');
+    const handleOnline = () => {
+      console.log('网络连接已恢复');
+      setIsOnline(true);
+    };
+    const handleOffline = () => {
+      console.warn('网络连接已断开');
+      setIsOnline(false);
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -76,5 +68,5 @@ export const useNetworkMonitor = () => {
     };
   }, []);
 
-  return navigator.onLine;
+  return isOnline;
 };

@@ -1,50 +1,42 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStorage } from './useStorage';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'system';
+
+const resolveTheme = (theme: Theme): 'light' | 'dark' => {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return theme;
+};
 
 export const useTheme = () => {
   const [theme, setTheme] = useStorage<Theme>('theme', 'light');
-
-  const getEffectiveTheme = (): 'light' | 'dark' => {
-    return theme;
-  };
+  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>(() => resolveTheme(theme));
 
   useEffect(() => {
-    const getSystemTheme = (): 'light' | 'dark' => {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const resolved = resolveTheme(theme);
+    document.documentElement.setAttribute('data-theme', resolved);
+    setEffectiveTheme(resolved);
+  }, [theme]);
+
+  // 监听系统主题变化（仅在 theme === 'system' 时生效）
+  useEffect(() => {
+    if (theme !== 'system') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      const resolved = e.matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', resolved);
+      setEffectiveTheme(resolved);
     };
 
-    const getEffectiveTheme = (): 'light' | 'dark' => {
-      return theme;
-    };
-
-    const applyTheme = (currentTheme: 'light' | 'dark') => {
-      const root = document.documentElement;
-      root.setAttribute('data-theme', currentTheme);
-      
-      // 更新CSS变量
-      if (currentTheme === 'dark') {
-        root.style.setProperty('--bg-primary', '#1a1a1a');
-        root.style.setProperty('--bg-secondary', '#2d2d2d');
-        root.style.setProperty('--text-primary', '#ffffff');
-        root.style.setProperty('--text-secondary', '#cccccc');
-        root.style.setProperty('--border-color', '#404040');
-      } else {
-        root.style.setProperty('--bg-primary', '#ffffff');
-        root.style.setProperty('--bg-secondary', '#f8f9fa');
-        root.style.setProperty('--text-primary', '#333333');
-        root.style.setProperty('--text-secondary', '#666666');
-        root.style.setProperty('--border-color', '#e9ecef');
-      }
-    };
-
-    const effectiveTheme = getEffectiveTheme();
-    applyTheme(effectiveTheme);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
   const toggleTheme = () => {
-    const themes: Theme[] = ['light', 'dark'];
+    const themes: Theme[] = ['light', 'dark', 'system'];
     const currentIndex = themes.indexOf(theme);
     const nextIndex = (currentIndex + 1) % themes.length;
     setTheme(themes[nextIndex]);
@@ -54,6 +46,6 @@ export const useTheme = () => {
     theme,
     setTheme,
     toggleTheme,
-    effectiveTheme: getEffectiveTheme(),
+    effectiveTheme,
   };
 };

@@ -5,6 +5,7 @@ import { Friend } from '../types';
 interface FilterOptions {
   searchQuery: string;
   selectedRegion: string;
+  selectedTag?: string;
 }
 
 export const useFriendsFilter = (friends: Friend[], options: FilterOptions) => {
@@ -19,6 +20,13 @@ export const useFriendsFilter = (friends: Friend[], options: FilterOptions) => {
       filtered = filtered.filter(friend => friend.province === options.selectedRegion);
     }
 
+    // 标签筛选
+    if (options.selectedTag && options.selectedTag !== 'all') {
+      filtered = filtered.filter(friend =>
+        friend.tags && friend.tags.includes(options.selectedTag!)
+      );
+    }
+
     // 搜索筛选（使用防抖后的查询）
     if (debouncedSearchQuery.trim()) {
       const query = debouncedSearchQuery.toLowerCase().trim();
@@ -31,11 +39,17 @@ export const useFriendsFilter = (friends: Friend[], options: FilterOptions) => {
     }
 
     return filtered;
-  }, [friends, options.selectedRegion, debouncedSearchQuery]);
+  }, [friends, options.selectedRegion, options.selectedTag, debouncedSearchQuery]);
 
   const regions = useMemo(() => {
     const uniqueRegions = Array.from(new Set(friends.map(friend => friend.province)));
     return uniqueRegions.sort();
+  }, [friends]);
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    friends.forEach(f => f.tags?.forEach(t => tagSet.add(t)));
+    return Array.from(tagSet).sort();
   }, [friends]);
 
   const stats = useMemo(() => ({
@@ -47,6 +61,7 @@ export const useFriendsFilter = (friends: Friend[], options: FilterOptions) => {
   return {
     filteredFriends: filteredData,
     regions,
+    allTags,
     ...stats,
   };
 };

@@ -3,7 +3,14 @@
   "version": "0.2.0",
   "private": true,
   "description": "A dynamic web application to visualize friends' distribution on world and China maps",
-  "keywords": ["react", "typescript", "leaflet", "map", "friends", "visualization"],
+  "keywords": [
+    "react",
+    "typescript",
+    "leaflet",
+    "map",
+    "friends",
+    "visualization"
+  ],
   "author": "LeKZzzz",
   "license": "Apache-2.0",
   "repository": {
@@ -11,14 +18,17 @@
     "url": "https://github.com/LeKZzzz/friends-map"
   },
   "dependencies": {
-    "@types/leaflet": "^1.9.19",
-    "@types/node": "^16.18.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
     "leaflet": "^1.9.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
+    "react-leaflet-cluster": "^4.1.3"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.19",
+    "@types/node": "^16.18.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.0"
   },

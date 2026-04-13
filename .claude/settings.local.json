@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx -p typescript tsc --noEmit)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" plan --title \"前端优化与新功能\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"性能优化-escapeHtml与region统计\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"性能优化-移除假Loading状态\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"性能优化-Marker图标缓存\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"暗色主题完善\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"无障碍优化-模态框焦点捕获与ARIA\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"无障碍优化-FriendItem与CustomSelect键盘支持\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"代码问题修复\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"地图联动筛选\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"Marker聚类\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"系统主题跟随\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"好友分组标签\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"统计面板\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"导入导出好友数据\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"地图标记高亮动画\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"地图Marker无障碍\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"键盘快捷键改进\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"移动端手势优化\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"好友详情页分享\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
+      "Bash(npx eslint:*)"
+    ]
+  }
+}
