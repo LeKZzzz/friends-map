@@ -66,13 +66,13 @@ const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewpor
         <div data-friend-id="${escapeHtml(friend.id)}" role="button" aria-label="查看 ${escapeHtml(friend.name)} 的位置" style="
           width: 40px;
           height: 40px;
-          background-color: ${mapType === 'world' ? '#ff6b6b' : '#e74c3c'};
-          border: 3px solid white;
+          background-color: ${mapType === 'world' ? '#D4A574' : '#C4935E'};
+          border: 3px solid #FFF8F0;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          box-shadow: 0 2px 6px rgba(44,24,18,0.3), 0 0 8px rgba(212,165,116,0.2);
           cursor: pointer;
           opacity: ${opacity};
           transition: opacity 0.3s ease;
@@ -162,7 +162,7 @@ const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewpor
                 <Tooltip permanent={false} direction="top" offset={[0, -40]}>
                   <div style={{ textAlign: 'center', minWidth: '120px' }}>
                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{escapeHtml(friend.name)}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #666)' }}>{escapeHtml(friend.city)}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #6B4C3B)' }}>{escapeHtml(friend.city)}</div>
                   </div>
                 </Tooltip>
               </Marker>

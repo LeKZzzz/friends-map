@@ -24,7 +24,9 @@
       "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"键盘快捷键改进\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
       "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"移动端手势优化\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
       "Bash(python \"C:/Users/LeK/.claude/skills/exec-plan/scripts/create_plan_task_doc.py\" task --title \"好友详情页分享\" --plan-file \"docs/plans/2026-04-13-plan001-前端优化与新功能.md\")",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(ls E:/Programs/friends-map/src/**/*.css)",
+      "Bash(node -e \"const pkg = require\\(''./package.json''\\); console.log\\(''react-leaflet:'', pkg.dependencies[''react-leaflet'']\\); console.log\\(''react-leaflet-cluster:'', pkg.dependencies[''react-leaflet-cluster'']\\); console.log\\(''leaflet:'', pkg.dependencies[''leaflet'']\\);\")"
     ]
   }
 }

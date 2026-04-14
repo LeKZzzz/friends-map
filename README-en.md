@@ -10,19 +10,42 @@
 
 ## ✨ Features
 
-- 🌍 **World Map**: Displays global view with friend location markers
-- 🇨🇳 **China Map**: Provides detailed China view with specific friend markers
-- 📍 **Friend Markers**: Each friend is represented by a map marker showing their location
-- 💬 **Friend Information**: Hover markers for brief info, click markers for detailed information
-- 📱 **Responsive Design**: Supports desktop and mobile devices
+### Map & Navigation
+- 🌍 **World Map / China Map**: One-click switch between global view and detailed China view
+- 📍 **Marker Clustering**: Nearby friends are automatically grouped into clusters; click to expand, spiderfy on max zoom
+- 🎯 **flyTo Navigation**: Click a friend in the sidebar to fly to their location with a highlight animation
+- 🔗 **Filter Sync**: Sidebar search/filter syncs with map markers; unmatched markers fade out
+
+### Search & Filter
+- 🔍 **Live Search**: Fuzzy search by name, city, province, address (debounced)
+- 📍 **Region Filter**: Dropdown filter by province with friend counts
+- 🏷️ **Tag Groups**: Custom tags (classmate, coworker, etc.) for filtering friends
+
+### Data Management
+- 📤 **Export JSON**: One-click export friends data as a JSON file
+- 📥 **Import JSON**: Import JSON with format validation, auto-persist to localStorage
+- 📊 **Stats Panel**: Friend count, province/city coverage, Top 10 rankings
+
+### Theme & Appearance
+- 🌙 **Light / Dark / System**: Three theme modes driven by CSS custom properties
+- 📱 **Mobile Responsive**: Swipe to open/close sidebar, friend details as bottom sheet
 - 👤 **Gravatar Avatars**: Uses Gravatar monsterid as default avatars
+
+### Accessibility & Shortcuts
+- ♿ **Keyboard Navigation**: Tab through friend list, Enter to locate, arrow keys in dropdowns
+- 🎹 **Keyboard Shortcuts**: `M` toggle map, `F` focus search, `,` open settings, `?` show help
+- 🗣️ **ARIA Support**: Focus trap in modals, dialog roles, marker aria-labels
+- 🔤 **IME Compatible**: Shortcuts are disabled during IME composition input
+
+### Sharing
+- 📤 **Friend Sharing**: Native Web Share API with clipboard copy fallback
 
 ## 🛠️ Tech Stack
 
-- ⚛️ **React + TypeScript**: Modern frontend framework
-- 🗺️ **Leaflet**: Open-source mapping library
-- 🔧 **React-Leaflet**: React wrapper for Leaflet
-- 🌐 **OpenStreetMap**: Open-source map data
+- ⚛️ **React 18 + TypeScript**: Modern frontend framework
+- 🗺️ **Leaflet / React-Leaflet**: Open-source mapping library
+- 🧩 **react-leaflet-cluster**: Marker clustering
+- 🌐 **OpenStreetMap**: Open-source map tiles
 
 ## 📁 Project Structure
 
@@ -30,29 +53,41 @@
 friends-map
 ├── src
 │   ├── components
-│   │   ├── WorldMap.tsx          # 🌍 World map component
-│   │   ├── ChinaMap.tsx          # 🇨🇳 China map component
-│   │   ├── FriendMarker.tsx      # 📍 Friend marker component
-│   │   └── FriendInfo.tsx        # 💬 Friend info popup component
+│   │   ├── MapView.tsx           # 🗺️ Unified map component (clustering + filter sync + highlight)
+│   │   ├── FriendInfo.tsx        # 💬 Friend detail popup (share + focus trap)
+│   │   ├── FriendItem.tsx        # 📋 Friend list item (keyboard support)
+│   │   ├── CustomSelect.tsx      # 📝 Custom dropdown (arrow key nav + ARIA)
+│   │   ├── SettingsPanel.tsx     # ⚙️ Settings panel (theme + preferences)
+│   │   ├── StatsPanel.tsx        # 📊 Stats panel (rankings)
+│   │   ├── DataManager.tsx       # 💾 Import/Export component
+│   │   └── ErrorBoundary.tsx     # 🛡️ Error boundary
+│   ├── hooks
+│   │   ├── useTheme.ts           # 🎨 Theme hook (light/dark/system)
+│   │   ├── useFriends.ts         # 🔍 Friend filter hook (search + region + tags)
+│   │   ├── useMapNavigation.ts   # 🧭 Map navigation hook (flyTo)
+│   │   ├── useKeyboardShortcuts.ts # 🎹 Keyboard shortcuts (IME compatible + help panel)
+│   │   ├── useFocusTrap.ts       # ♿ Focus trap hook
+│   │   ├── useStorage.ts         # 💾 localStorage/sessionStorage hook
+│   │   ├── useDebounce.ts        # ⏱️ Debounce hook
+│   │   └── usePerformance.ts     # 📈 Performance monitoring hook
 │   ├── data
-│   │   └── friends.json          # 📊 Friends data
+│   │   ├── friends.json          # 📊 Friends data (excluded by .gitignore)
+│   │   └── friends.example.json  # 📋 Data template
 │   ├── types
-│   │   ├── index.ts             # 🔤 TypeScript type definitions
-│   │   └── json.d.ts            # 📄 JSON module type declarations
+│   │   └── index.ts              # 🔤 TypeScript type definitions
 │   ├── utils
-│   │   └── mapUtils.ts          # 🔧 Map utility functions
-│   ├── App.tsx                  # 🏠 Main application component
-│   ├── App.css                  # 🎨 Application styles
-│   ├── index.tsx                # 🚀 Application entry point
-│   └── index.css                # 🌐 Global styles
+│   │   └── mapUtils.ts           # 🔧 Map utility functions
+│   ├── App.tsx                   # 🏠 Main application component
+│   ├── App.css                   # 🎨 Global styles (CSS variable themes)
+│   └── index.tsx                 # 🚀 Application entry point
 ├── public
-│   └── index.html               # 📝 HTML template
-├── package.json                 # 📦 Project configuration and dependencies
-├── tsconfig.json               # ⚙️ TypeScript configuration
-└── README.md                   # 📖 Project documentation
+│   └── index.html                # 📝 HTML template
+├── package.json                  # 📦 Project configuration and dependencies
+├── tsconfig.json                 # ⚙️ TypeScript configuration
+└── README.md                     # 📖 Project documentation
 ```
 
-## 🚀 Quick Deployment
+## 🚀 Quick Start
 
 1. 📥 Clone the repository:
    ```bash
@@ -66,8 +101,7 @@ friends-map
    ```bash
    npm install
    ```
-
-4. 🎉 Start the application:
+4. 🎉 Start the development server:
    ```bash
    npm start
    ```
@@ -75,7 +109,9 @@ friends-map
 ## 📋 Usage
 
 ### 📊 Data Format
+
 Friends' information is stored in `src/data/friends.json` with the following format:
+
 ```json
 [
   {
@@ -87,31 +123,45 @@ Friends' information is stored in `src/data/friends.json` with the following for
     "latitude": 39.9042,
     "longitude": 116.4074,
     "avatar": "https://www.gravatar.com/avatar/1?s=50&d=monsterid&r=pg",
-    "description": "Friend from Beijing"
+    "description": "Friend from Beijing",
+    "tags": ["classmate", "university"]
   }
 ]
 ```
 
 ### 📝 Field Descriptions
-- `id`: 🆔 Unique identifier for the friend
-- `name`: 👤 Friend's name
-- `province`: 🏞️ Province/State/Country
-- `city`: 🏙️ City
-- `address`: 📍 Detailed address (optional)
-- `latitude`: 🌐 Latitude coordinate
-- `longitude`: 🌐 Longitude coordinate
-- `avatar`: 🖼️ Avatar URL (optional, defaults to Gravatar)
-- `description`: 📝 Friend description (optional)
 
-### ➕ Adding New Friends
-1. 📂 Open `src/data/friends.json` file
-2. ✏️ Add a new friend object to the array
-3. ✅ Ensure required fields are included: id, name, province, city, latitude, longitude
-4. 💾 Save the file, and the application will automatically update
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | Unique identifier |
+| `name` | string | ✅ | Friend's name |
+| `province` | string | ✅ | Province/State/Country |
+| `city` | string | ✅ | City |
+| `address` | string | ❌ | Detailed address |
+| `latitude` | number | ✅ | Latitude |
+| `longitude` | number | ✅ | Longitude |
+| `avatar` | string | ❌ | Avatar URL (defaults to Gravatar) |
+| `description` | string | ❌ | Description |
+| `tags` | string[] | ❌ | Tags (e.g., "classmate", "coworker") |
+
+### ➕ Adding Friends
+
+- **Manual editing**: Edit `src/data/friends.json` directly
+- **Import**: Click the "📥 Import JSON" button in the sidebar to select a formatted JSON file
+
+### ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `M` | Toggle world/China map |
+| `F` | Focus search input |
+| `Esc` | Clear search / Close panel |
+| `,` | Open settings |
+| `?` | Show keyboard shortcuts help |
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a pull request or open an issue for any suggestions or improvements.
+Contributions are welcome! Please feel free to submit a Pull Request or open an Issue.
 
 ## 📄 License
 
