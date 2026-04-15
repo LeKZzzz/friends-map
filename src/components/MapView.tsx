@@ -1,6 +1,5 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef, useCallback, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
+import React, { useState, useRef, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Friend, MapRef } from '../types';
 import { escapeHtml } from '../utils/mapUtils';
@@ -24,10 +23,55 @@ interface MapViewProps {
   highlightedFriendId?: string | null;
 }
 
+interface InitialFitBoundsProps {
+  friends: Friend[];
+  mapType: 'world' | 'china';
+  shouldFit: boolean;
+  onFitted: () => void;
+}
+
+const InitialFitBounds: React.FC<InitialFitBoundsProps> = ({ friends, mapType, shouldFit, onFitted }) => {
+  const map = useMap();
+  const hasFittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!shouldFit || hasFittedRef.current) return;
+
+    const validFriends = friends
+      .map((friend) => ({
+        friend,
+        latitude: Number(friend.latitude),
+        longitude: Number(friend.longitude),
+      }))
+      .filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude));
+    if (validFriends.length === 0) return;
+
+    if (validFriends.length === 1) {
+      const { latitude, longitude } = validFriends[0];
+      map.setView([latitude, longitude], mapType === 'world' ? 5 : 7, { animate: false });
+      hasFittedRef.current = true;
+      onFitted();
+      return;
+    }
+
+    const bounds = L.latLngBounds(validFriends.map((item) => [item.latitude, item.longitude] as [number, number]));
+    map.fitBounds(bounds, {
+      padding: [40, 40],
+      maxZoom: mapType === 'world' ? 5 : 6,
+      animate: false,
+    });
+    hasFittedRef.current = true;
+    onFitted();
+  }, [friends, map, mapType, onFitted, shouldFit]);
+
+  return null;
+};
+
 const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewport, mapType, highlightedFriendId }, ref) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const iconCache = useRef<Map<string, L.DivIcon>>(new Map());
+  const hasInitialFitRef = useRef(false);
 
   // 用 Set 快速判断哪些 friend 在筛选结果中
   const filteredIds = useRef<Set<string>>(new Set());
@@ -63,7 +107,7 @@ const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewpor
     const opacity = dimmed ? '0.3' : '1';
     const icon = L.divIcon({
       html: `
-        <div data-friend-id="${escapeHtml(friend.id)}" role="button" aria-label="查看 ${escapeHtml(friend.name)} 的位置" style="
+        <div data-friend-id="${escapeHtml(friend.id)}" role="button" aria-label="View ${escapeHtml(friend.name)} location" style="
           width: 40px;
           height: 40px;
           background-color: ${mapType === 'world' ? '#D4A574' : '#C4935E'};
@@ -92,29 +136,6 @@ const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewpor
     return icon;
   }, [mapType]);
 
-  // 聚类图标创建
-  const clusterIcon = useCallback((cluster: any) => {
-    const count = cluster.getChildCount();
-    let size = 'small';
-    let dimension = 40;
-    if (count > 100) { size = 'large'; dimension = 60; }
-    else if (count > 10) { size = 'medium'; dimension = 50; }
-
-    return L.divIcon({
-      html: `<div class="cluster-icon cluster-${size}"><span>${count}</span></div>`,
-      className: 'custom-cluster-icon',
-      iconSize: L.point(dimension, dimension),
-    });
-  }, []);
-
-  // 聚类配置
-  const clusterOptions = useMemo(() => ({
-    maxClusterRadius: 50,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    iconCreateFunction: clusterIcon,
-  }), [clusterIcon]);
-
   // 高亮动画：当 highlightedFriendId 变化时，为对应 marker 添加动画类
   useEffect(() => {
     if (!highlightedFriendId) return;
@@ -130,6 +151,9 @@ const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewpor
 
   const containerClassName = mapType === 'world' ? 'world-map-container' : 'china-map-container';
   const mapClassName = mapType === 'world' ? 'world-map' : 'china-map';
+  const handleInitialFitComplete = useCallback(() => {
+    hasInitialFitRef.current = true;
+  }, []);
 
   return (
     <div className={containerClassName}>
@@ -142,33 +166,41 @@ const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewpor
         style={{ height: '100%', width: '100%' }}
         ref={mapRef}
       >
+        <InitialFitBounds
+          friends={displayFriends}
+          mapType={mapType}
+          shouldFit={!hasInitialFitRef.current}
+          onFitted={handleInitialFitComplete}
+        />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <MarkerClusterGroup key={mapType} {...clusterOptions}>
-          {displayFriends.map((friend) => {
-            const dimmed = hasFilter && !filteredIds.current.has(friend.id);
-            return (
-              <Marker
-                key={friend.id}
-                position={[friend.latitude, friend.longitude]}
-                icon={createCustomIcon(friend, dimmed)}
-                opacity={dimmed ? 0.4 : 1}
-                eventHandlers={{
-                  click: () => !dimmed && setSelectedFriend(friend),
-                }}
-              >
-                <Tooltip permanent={false} direction="top" offset={[0, -40]}>
-                  <div style={{ textAlign: 'center', minWidth: '120px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{escapeHtml(friend.name)}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #6B4C3B)' }}>{escapeHtml(friend.city)}</div>
-                  </div>
-                </Tooltip>
-              </Marker>
-            );
-          })}
-        </MarkerClusterGroup>
+        {displayFriends.map((friend) => {
+          const latitude = Number(friend.latitude);
+          const longitude = Number(friend.longitude);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+          const dimmed = hasFilter && !filteredIds.current.has(friend.id);
+          return (
+            <Marker
+              key={friend.id}
+              position={[latitude, longitude]}
+              icon={createCustomIcon(friend, dimmed)}
+              opacity={dimmed ? 0.4 : 1}
+              zIndexOffset={highlightedFriendId === friend.id ? 1000 : 0}
+              eventHandlers={{
+                click: () => !dimmed && setSelectedFriend(friend),
+              }}
+            >
+              <Tooltip permanent={false} direction="top" offset={[0, -40]}>
+                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{escapeHtml(friend.name)}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #6B4C3B)' }}>{escapeHtml(friend.city)}</div>
+                </div>
+              </Tooltip>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       {selectedFriend && (
