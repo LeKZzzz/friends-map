@@ -6,7 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import SettingsPanel from './components/SettingsPanel';
 import StatsPanel from './components/StatsPanel';
 import DataManager from './components/DataManager';
-import { Friend } from './types';
+import { Friend, MapViewport } from './types';
 import { useFriendsFilter } from './hooks/useFriends';
 import { useMapNavigation } from './hooks/useMapNavigation';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -17,7 +17,98 @@ import { DEFAULT_WORLD_VIEWPORT, DEFAULT_CHINA_VIEWPORT } from './utils/mapUtils
 import friendsData from './data/friends.json';
 import './App.css';
 
+type MapType = 'world' | 'china';
+type MapViewports = Record<MapType, MapViewport>;
+
+interface InitialViewConfig {
+  mapType: MapType;
+  viewports: MapViewports;
+  restored: Record<MapType, boolean>;
+}
+
+interface StoredPreferences {
+  autoSave?: boolean;
+  mapType?: MapType;
+  viewports?: Partial<MapViewports>;
+}
+
+const cloneViewport = (viewport: MapViewport): MapViewport => ({
+  center: [viewport.center[0], viewport.center[1]],
+  zoom: viewport.zoom,
+});
+
+const getDefaultMapViewports = (): MapViewports => ({
+  world: cloneViewport(DEFAULT_WORLD_VIEWPORT),
+  china: cloneViewport(DEFAULT_CHINA_VIEWPORT),
+});
+
+const isValidMapType = (value: unknown): value is MapType => value === 'world' || value === 'china';
+
+const isValidViewport = (value: unknown): value is MapViewport => {
+  if (!value || typeof value !== 'object') return false;
+  const viewport = value as Partial<MapViewport>;
+  if (!Array.isArray(viewport.center) || viewport.center.length !== 2) return false;
+  if (!viewport.center.every((coord) => Number.isFinite(coord))) return false;
+  return Number.isFinite(viewport.zoom);
+};
+
+const isSameViewport = (a: MapViewport, b: MapViewport): boolean => (
+  Math.abs(a.center[0] - b.center[0]) < 1e-6 &&
+  Math.abs(a.center[1] - b.center[1]) < 1e-6 &&
+  Math.abs(a.zoom - b.zoom) < 1e-6
+);
+
+const getStoredPreferences = (): StoredPreferences | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const stored = window.localStorage.getItem('userPreferences');
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as StoredPreferences;
+  } catch {
+    return null;
+  }
+};
+
+const getInitialViewConfig = (): InitialViewConfig => {
+  const defaultViewports = getDefaultMapViewports();
+  const restored: Record<MapType, boolean> = {
+    world: false,
+    china: false,
+  };
+
+  const stored = getStoredPreferences();
+  if (!stored?.autoSave) {
+    return {
+      mapType: 'world',
+      viewports: defaultViewports,
+      restored,
+    };
+  }
+
+  const mapType = isValidMapType(stored.mapType) ? stored.mapType : 'world';
+
+  (['world', 'china'] as const).forEach((currentMapType) => {
+    const savedViewport = stored.viewports?.[currentMapType];
+    if (isValidViewport(savedViewport)) {
+      defaultViewports[currentMapType] = cloneViewport(savedViewport);
+      restored[currentMapType] = true;
+    }
+  });
+
+  return {
+    mapType,
+    viewports: defaultViewports,
+    restored,
+  };
+};
+
 const App: React.FC = () => {
+  const initialViewConfig = useMemo(() => getInitialViewConfig(), []);
+  const defaultMapViewports = useMemo(() => getDefaultMapViewports(), []);
+
   const [friends, setFriends] = useState<Friend[]>(() => {
     try {
       const stored = localStorage.getItem('friendsData');
@@ -28,7 +119,9 @@ const App: React.FC = () => {
     } catch { /* fall through to default */ }
     return friendsData as Friend[];
   });
-  const [activeMap, setActiveMap] = useState<'world' | 'china'>('world');
+  const [activeMap, setActiveMap] = useState<MapType>(initialViewConfig.mapType);
+  const [mapViewports, setMapViewports] = useState<MapViewports>(() => initialViewConfig.viewports);
+  const [viewportSyncToken, setViewportSyncToken] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
@@ -36,6 +129,7 @@ const App: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [highlightedFriendId, setHighlightedFriendId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const prevAutoSaveRef = useRef<boolean | null>(null);
 
   // 初始化Hooks
   const { preferences, setPreferences } = useUserPreferences();
@@ -76,18 +170,42 @@ const App: React.FC = () => {
 
   // 优化回调函数，避免不必要的重渲染
   const handleMapToggle = useCallback(() => {
-    setActiveMap(prev => {
-      const newMapType = prev === 'world' ? 'china' : 'world';
-      // 在状态更新时保存偏好设置
-      if (preferences.autoSave) {
-        setPreferences(prevPrefs => ({
-          ...prevPrefs,
-          mapType: newMapType
-        }));
+    setActiveMap(prev => (prev === 'world' ? 'china' : 'world'));
+  }, []);
+
+  const handleViewportChange = useCallback((nextViewport: MapViewport) => {
+    if (!preferences.autoSave) return;
+
+    setMapViewports((prev) => {
+      const current = prev[activeMap];
+      if (isSameViewport(current, nextViewport)) {
+        return prev;
       }
-      return newMapType;
+      return {
+        ...prev,
+        [activeMap]: cloneViewport(nextViewport),
+      };
     });
-  }, [preferences.autoSave, setPreferences]);
+  }, [activeMap, preferences.autoSave]);
+
+  useEffect(() => {
+    if (prevAutoSaveRef.current === null) {
+      prevAutoSaveRef.current = preferences.autoSave;
+      return;
+    }
+
+    if (prevAutoSaveRef.current && !preferences.autoSave) {
+      setMapViewports({
+        world: cloneViewport(defaultMapViewports.world),
+        china: cloneViewport(defaultMapViewports.china),
+      });
+      setViewportSyncToken((token) => token + 1);
+    }
+
+    prevAutoSaveRef.current = preferences.autoSave;
+  }, [defaultMapViewports, preferences.autoSave]);
+
+  const effectiveMapViewports = preferences.autoSave ? mapViewports : defaultMapViewports;
 
   const handleSearchFocus = useCallback(() => {
     searchInputRef.current?.focus();
@@ -191,14 +309,25 @@ const App: React.FC = () => {
     handleOpenSettings
   );
 
-  // 应用用户偏好设置（仅在初始化时应用）
+  // 当自动保存开启时，持久化当前地图类型和视图状态
   useEffect(() => {
-    if (preferences.autoSave && preferences.mapType !== activeMap) {
-      setActiveMap(preferences.mapType);
-    }
-    // 仅在挂载时执行一次
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!preferences.autoSave) return;
+
+    const worldChanged = !preferences.viewports?.world || !isSameViewport(preferences.viewports.world, mapViewports.world);
+    const chinaChanged = !preferences.viewports?.china || !isSameViewport(preferences.viewports.china, mapViewports.china);
+    const mapTypeChanged = preferences.mapType !== activeMap;
+
+    if (!worldChanged && !chinaChanged && !mapTypeChanged) return;
+
+    setPreferences((prev) => ({
+      ...prev,
+      mapType: activeMap,
+      viewports: {
+        world: cloneViewport(mapViewports.world),
+        china: cloneViewport(mapViewports.china),
+      },
+    }));
+  }, [activeMap, mapViewports, preferences.autoSave, preferences.mapType, preferences.viewports, setPreferences]);
 
   // 添加错误边界处理
   useEffect(() => {
@@ -228,13 +357,7 @@ const App: React.FC = () => {
             <div className="map-controls" role="group" aria-label="地图切换">
               <button
                 className={`map-btn ${activeMap === 'world' ? 'active' : ''}`}
-                onClick={() => setActiveMap(prev => {
-                  if (prev !== 'world') {
-                    if (preferences.autoSave) setPreferences(p => ({ ...p, mapType: 'world' as const }));
-                    return 'world';
-                  }
-                  return prev;
-                })}
+                onClick={() => setActiveMap('world')}
                 aria-pressed={activeMap === 'world'}
                 aria-label="切换到世界地图"
               >
@@ -242,13 +365,7 @@ const App: React.FC = () => {
               </button>
               <button
                 className={`map-btn ${activeMap === 'china' ? 'active' : ''}`}
-                onClick={() => setActiveMap(prev => {
-                  if (prev !== 'china') {
-                    if (preferences.autoSave) setPreferences(p => ({ ...p, mapType: 'china' as const }));
-                    return 'china';
-                  }
-                  return prev;
-                })}
+                onClick={() => setActiveMap('china')}
                 aria-pressed={activeMap === 'china'}
                 aria-label="切换到中国地图"
               >
@@ -392,9 +509,12 @@ const App: React.FC = () => {
               ref={mapRef}
               friends={filteredFriends}
               allFriends={friends}
-              viewport={activeMap === 'world' ? DEFAULT_WORLD_VIEWPORT : DEFAULT_CHINA_VIEWPORT}
+              viewport={effectiveMapViewports[activeMap]}
               mapType={activeMap}
               highlightedFriendId={highlightedFriendId}
+              onViewportChange={preferences.autoSave ? handleViewportChange : undefined}
+              enableInitialFit={false}
+              viewportSyncToken={viewportSyncToken}
             />
           </main>
         </div>

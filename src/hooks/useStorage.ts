@@ -1,6 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { MapViewport } from '../types';
 
 type StorageType = 'localStorage' | 'sessionStorage';
+const STORAGE_SYNC_EVENT = 'app:storage-sync';
+type MapType = 'world' | 'china';
+type ViewportsByMapType = Partial<Record<MapType, MapViewport>>;
+
+export interface UserPreferences {
+  theme: 'light' | 'dark' | 'system';
+  language: string;
+  mapType: MapType;
+  autoSave: boolean;
+  viewports?: ViewportsByMapType;
+}
+
+interface StorageSyncDetail {
+  key: string;
+  storageType: StorageType;
+  newValue: string | null;
+}
 
 interface UseStorageOptions {
   serializer?: {
@@ -51,7 +69,15 @@ export function useStorage<T>(
       storedValueRef.current = newValue;
 
       if (storage) {
-        storage.setItem(key, serializer.stringify(newValue));
+        const serialized = serializer.stringify(newValue);
+        storage.setItem(key, serialized);
+        window.dispatchEvent(new CustomEvent<StorageSyncDetail>(STORAGE_SYNC_EVENT, {
+          detail: {
+            key,
+            storageType,
+            newValue: serialized,
+          }
+        }));
       }
     } catch (error) {
       console.warn(`Error setting ${storageType} key "${key}":`, error);
@@ -64,6 +90,13 @@ export function useStorage<T>(
       storedValueRef.current = defaultValue;
       if (storage) {
         storage.removeItem(key);
+        window.dispatchEvent(new CustomEvent<StorageSyncDetail>(STORAGE_SYNC_EVENT, {
+          detail: {
+            key,
+            storageType,
+            newValue: null,
+          }
+        }));
       }
     } catch (error) {
       console.warn(`Error removing ${storageType} key "${key}":`, error);
@@ -86,16 +119,40 @@ export function useStorage<T>(
       }
     };
 
+    const handleSameTabStorageChange = (e: Event) => {
+      const event = e as CustomEvent<StorageSyncDetail>;
+      const detail = event.detail;
+      if (!detail || detail.key !== key || detail.storageType !== storageType) return;
+
+      if (detail.newValue === null) {
+        setStoredValue(defaultValue);
+        storedValueRef.current = defaultValue;
+        return;
+      }
+
+      try {
+        const newValue = serializer.parse(detail.newValue);
+        setStoredValue(newValue);
+        storedValueRef.current = newValue;
+      } catch (error) {
+        console.warn(`Error parsing same-tab storage event for key "${key}":`, error);
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key, serializer, storage]);
+    window.addEventListener(STORAGE_SYNC_EVENT, handleSameTabStorageChange as EventListener);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener(STORAGE_SYNC_EVENT, handleSameTabStorageChange as EventListener);
+    };
+  }, [defaultValue, key, serializer, storage, storageType]);
 
   return [storedValue, setValue, removeValue] as const;
 }
 
 // 专门用于用户偏好设置的Hook
 export function useUserPreferences() {
-  const [preferences, setPreferences] = useStorage('userPreferences', {
+  const [preferences, setPreferences] = useStorage<UserPreferences>('userPreferences', {
     theme: 'light' as 'light' | 'dark' | 'system',
     language: 'zh-CN',
     mapType: 'world' as 'world' | 'china',

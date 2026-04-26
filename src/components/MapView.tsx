@@ -1,9 +1,8 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { Friend, MapRef } from '../types';
+import { Friend, MapRef, MapViewport } from '../types';
 import { escapeHtml } from '../utils/mapUtils';
-import { MapViewport } from '../types';
 import FriendInfo from './FriendInfo';
 import 'leaflet/dist/leaflet.css';
 
@@ -21,6 +20,9 @@ interface MapViewProps {
   viewport: MapViewport;
   mapType: 'world' | 'china';
   highlightedFriendId?: string | null;
+  onViewportChange?: (viewport: MapViewport) => void;
+  enableInitialFit?: boolean;
+  viewportSyncToken?: number;
 }
 
 interface InitialFitBoundsProps {
@@ -28,6 +30,16 @@ interface InitialFitBoundsProps {
   mapType: 'world' | 'china';
   shouldFit: boolean;
   onFitted: () => void;
+}
+
+interface SyncViewportOnMapTypeChangeProps {
+  viewport: MapViewport;
+  mapType: 'world' | 'china';
+  viewportSyncToken?: number;
+}
+
+interface TrackViewportChangesProps {
+  onViewportChange?: (viewport: MapViewport) => void;
 }
 
 const InitialFitBounds: React.FC<InitialFitBoundsProps> = ({ friends, mapType, shouldFit, onFitted }) => {
@@ -67,7 +79,79 @@ const InitialFitBounds: React.FC<InitialFitBoundsProps> = ({ friends, mapType, s
   return null;
 };
 
-const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewport, mapType, highlightedFriendId }, ref) => {
+const SyncViewportOnMapTypeChange: React.FC<SyncViewportOnMapTypeChangeProps> = ({ viewport, mapType, viewportSyncToken = 0 }) => {
+  const map = useMap();
+  const prevMapTypeRef = useRef<'world' | 'china' | null>(null);
+  const prevViewportSyncTokenRef = useRef(viewportSyncToken);
+
+  useEffect(() => {
+    if (prevMapTypeRef.current === null) {
+      prevMapTypeRef.current = mapType;
+      prevViewportSyncTokenRef.current = viewportSyncToken;
+      return;
+    }
+
+    const mapTypeChanged = prevMapTypeRef.current !== mapType;
+    const tokenChanged = prevViewportSyncTokenRef.current !== viewportSyncToken;
+
+    if (mapTypeChanged || tokenChanged) {
+      map.setView(viewport.center, viewport.zoom, { animate: true });
+      prevMapTypeRef.current = mapType;
+      prevViewportSyncTokenRef.current = viewportSyncToken;
+    }
+  }, [map, mapType, viewport.center, viewport.zoom, viewportSyncToken]);
+
+  return null;
+};
+
+const TrackViewportChanges: React.FC<TrackViewportChangesProps> = ({ onViewportChange }) => {
+  const lastViewportRef = useRef<MapViewport | null>(null);
+  const map = useMap();
+
+  const emitViewport = useCallback((map: L.Map) => {
+    if (!onViewportChange) return;
+    const center = map.getCenter();
+    const nextViewport: MapViewport = {
+      center: [center.lat, center.lng],
+      zoom: map.getZoom(),
+    };
+
+    const lastViewport = lastViewportRef.current;
+    if (
+      lastViewport &&
+      Math.abs(lastViewport.center[0] - nextViewport.center[0]) < 1e-6 &&
+      Math.abs(lastViewport.center[1] - nextViewport.center[1]) < 1e-6 &&
+      Math.abs(lastViewport.zoom - nextViewport.zoom) < 1e-6
+    ) {
+      return;
+    }
+
+    lastViewportRef.current = nextViewport;
+    onViewportChange(nextViewport);
+  }, [onViewportChange]);
+
+  useMapEvents({
+    moveend: () => emitViewport(map),
+    zoomend: () => emitViewport(map),
+  });
+
+  useEffect(() => {
+    emitViewport(map);
+  }, [emitViewport, map]);
+
+  return null;
+};
+
+const MapView = forwardRef<MapRef, MapViewProps>(({
+  friends,
+  allFriends,
+  viewport,
+  mapType,
+  highlightedFriendId,
+  onViewportChange,
+  enableInitialFit = true,
+  viewportSyncToken = 0,
+}, ref) => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const iconCache = useRef<Map<string, L.DivIcon>>(new Map());
@@ -169,9 +253,15 @@ const MapView = forwardRef<MapRef, MapViewProps>(({ friends, allFriends, viewpor
         <InitialFitBounds
           friends={displayFriends}
           mapType={mapType}
-          shouldFit={!hasInitialFitRef.current}
+          shouldFit={enableInitialFit && !hasInitialFitRef.current}
           onFitted={handleInitialFitComplete}
         />
+        <SyncViewportOnMapTypeChange
+          viewport={viewport}
+          mapType={mapType}
+          viewportSyncToken={viewportSyncToken}
+        />
+        <TrackViewportChanges onViewportChange={onViewportChange} />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
