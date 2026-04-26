@@ -6,7 +6,17 @@
 
 **Friends Map** is a dynamic web application built with React and TypeScript that helps users visualize the distribution of friends on world maps and China maps. It supports precise positioning based on countries, provinces, cities, and detailed addresses.
 
-![preview](image/preview.png)
+**Light Mode**
+
+![World Map - Light](image/preview-world-light.png)
+
+![China Map - Light](image/preview-china-light.png)
+
+**Dark Mode**
+
+![World Map - Dark](image/preview-world-dark.png)
+
+![China Map - Dark](image/preview-china-dark.png)
 
 ## ✨ Features
 

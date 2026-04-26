@@ -6,7 +6,17 @@
 
 **朋友分布地图**是一个基于 React 和 TypeScript 构建的动态 Web 应用，帮助用户在世界地图和中国地图上可视化朋友的分布情况。支持根据国家、省份、城市和详细地址进行精确定位。
 
-![preview](image/preview.png)
+**亮色模式**
+
+![世界地图 - 亮色](image/preview-world-light.png)
+
+![中国地图 - 亮色](image/preview-china-light.png)
+
+**暗色模式**
+
+![世界地图 - 暗色](image/preview-world-dark.png)
+
+![中国地图 - 暗色](image/preview-china-dark.png)
 
 ## ✨ 功能特性
 
